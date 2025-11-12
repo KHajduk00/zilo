@@ -307,13 +307,15 @@ fn editorDrawRows(writer: anytype) !void {
             }
         } else {
             const row = E.rows[filerow];
-            if (E.coloff >= row.size) {
+            var len = row.rsize;
+
+            if (E.coloff >= len) {
                 try writer.writeAll("");
             } else {
                 const start = E.coloff;
-                var len = row.size - start;
+                len -= start;
                 if (len > E.screencols) len = E.screencols;
-                try writer.writeAll(row.chars[start .. start + len]);
+                try writer.writeAll(row.render[start .. start + len]);
             }
         }
 
