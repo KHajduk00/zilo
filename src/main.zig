@@ -201,7 +201,23 @@ fn editorAppendRow(allocator: mem.Allocator, s: []const u8) !void {
 
     @memcpy(E.rows[at].chars[0..s.len], s);
     E.rows[at].chars[s.len] = 0;
+
+    try editorUpdateRow(allocator, &E.rows[at]);
+
     E.numrows += 1;
+}
+
+fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
+    if (row.render.len > 0) {
+        allocator.free(row.render);
+    }
+
+    row.render = try allocator.alloc(u8, row.size + 1);
+
+    @memcpy(row.render[0..row.size], row.chars[0..row.size]);
+
+    row.render[row.size] = 0;
+    row.rsize = row.size;
 }
 
 //*** file i/o ***/
