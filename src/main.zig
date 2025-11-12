@@ -15,8 +15,10 @@ const editorKey = enum(u16) { ARROW_LEFT = 'a', ARROW_RIGHT = 'd', ARROW_UP = 'w
 const zilo_version = "0.0.1";
 
 const Erow = struct {
-    size: usize,
-    chars: []u8,
+    size: usize, // Raw string size
+    chars: []u8, // Raw string
+    rsize: usize, // Rendered string size
+    render: []u8, // Rendered string (with expanded tabs)
 };
 
 const EditorConfig = struct {
@@ -193,6 +195,8 @@ fn editorAppendRow(allocator: mem.Allocator, s: []const u8) !void {
     E.rows[at] = .{
         .size = s.len,
         .chars = try allocator.alloc(u8, s.len + 1),
+        .rsize = 0,
+        .render = &[_]u8{}, // We initialize as an empty slice (like Null in C)
     };
 
     @memcpy(E.rows[at].chars[0..s.len], s);
