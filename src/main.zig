@@ -320,6 +320,9 @@ fn editorMoveCursor(key: u16) void {
             if (row) |r| {
                 if (E.cx < r.size) {
                     E.cx += 1;
+                } else if (E.cy < E.numrows - 1) {
+                    E.cy += 1;
+                    E.cx = 0;
                 }
             }
         },
