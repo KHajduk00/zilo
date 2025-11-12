@@ -9,6 +9,8 @@ fn CTRL_KEY(comptime k: u8) u8 {
     return k & 0x1f;
 }
 
+const ZILO_TAB_STOP = 8;
+
 const editorKey = enum(u16) { ARROW_LEFT = 'a', ARROW_RIGHT = 'd', ARROW_UP = 'w', ARROW_DOWN = 's', HOME_KEY = 0x1000, END_KEY = 0x1001, PAGE_UP = 0x1002, PAGE_DOWN = 0x1003, DEL_KEY = 0x1004 };
 
 //*** data ***/
@@ -208,13 +210,35 @@ fn editorAppendRow(allocator: mem.Allocator, s: []const u8) !void {
 }
 
 fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
+    var tabs: usize = 0;
+    for (row.chars[0..row.size]) |c| {
+        if (c == '\t') tabs += 1;
+    }
+
+    const extra_space_per_tab = ZILO_TAB_STOP - 1;
+    const new_size = row.size + (tabs * extra_space_per_tab) + 1;
+
     if (row.render.len > 0) {
         allocator.free(row.render);
     }
 
-    row.render = try allocator.alloc(u8, row.size + 1);
+    row.render = try allocator.alloc(u8, new_size);
 
-    @memcpy(row.render[0..row.size], row.chars[0..row.size]);
+    var idx: usize = 0;
+    for (row.chars[0..row.size]) |c| {
+        if (c == '\t') {
+            row.render[idx] = ' ';
+            idx += 1;
+
+            while (idx % ZILO_TAB_STOP != 0) : (idx += 1) {
+                row.render[idx] = ' ';
+                idx += 1;
+            }
+        } else {
+            row.render[idx] = c;
+            idx += 1;
+        }
+    }
 
     row.render[row.size] = 0;
     row.rsize = row.size;
