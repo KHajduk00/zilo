@@ -61,23 +61,29 @@ const KeyAction = enum {
 //*** terminal ***/
 // Function to restore the original terminal settings
 export fn disableRawMode() void {
-    std.posix.tcsetattr(std.io.getStdIn().handle, .FLUSH, E.orig_termios) catch {
+    std.posix.tcsetattr(std.fs.File.stdin().handle, .FLUSH, E.orig_termios) catch {
         std.debug.print("Error: Failed to restore terminal settings\n", .{});
         std.process.exit(1);
     };
 }
 
 fn die(msg: []const u8) noreturn {
-    std.io.getStdOut().writer().writeAll("\x1b[2J") catch {};
-    std.io.getStdOut().writer().writeAll("\x1b[H") catch {};
-    std.debug.print("Error: {s}\n", .{msg});
+    // Create buffer for stdout
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
 
+    stdout.writeAll("\x1b[2J") catch {};
+    stdout.writeAll("\x1b[H") catch {};
+    stdout.flush() catch {};
+
+    std.debug.print("Error: {s}\n", .{msg});
     std.process.exit(1);
 }
 
 // Function to enable raw mode in the terminal
 fn enableRawMode() !void {
-    const stdin = std.io.getStdIn().handle;
+    const stdin = std.fs.File.stdin().handle;
 
     E.orig_termios = std.posix.tcgetattr(stdin) catch {
         std.debug.print("Error: Could not get terminal attributes\n", .{});
@@ -113,10 +119,13 @@ fn enableRawMode() !void {
 
 fn editorReadKey() !u16 {
     var buf: [1]u8 = undefined;
-    const stdin = std.io.getStdIn().reader();
+    const stdin_file = std.fs.File.stdin();
+    var stdin_buffer: [1024]u8 = undefined;
+    var stdin_reader = stdin_file.reader(&stdin_buffer);
+    const stdin = &stdin_reader.interface;
 
     while (true) {
-        const n = try stdin.read(buf[0..]);
+        const n = try stdin.*.readSliceShort(buf[0..]);
         if (n == 1) break;
     }
 
@@ -125,17 +134,17 @@ fn editorReadKey() !u16 {
         var seq: [3]u8 = undefined;
 
         // Read first character of sequence
-        const seq1 = try stdin.read(seq[0..1]);
+        const seq1 = try stdin.*.readSliceShort(seq[0..1]);
         if (seq1 != 1) return '\x1b';
 
         if (seq[0] == '[') {
             // Read second character
-            const seq2 = try stdin.read(seq[1..2]);
+            const seq2 = try stdin.*.readSliceShort(seq[1..2]);
             if (seq2 != 1) return '\x1b';
 
             if (seq[1] >= '0' and seq[1] <= '9') {
                 // Read third character for extended sequences
-                const seq3 = try stdin.read(seq[2..3]);
+                const seq3 = try stdin.*.readSliceShort(seq[2..3]);
                 if (seq3 != 1) return '\x1b';
 
                 if (seq[2] == '~') {
@@ -164,7 +173,7 @@ fn editorReadKey() !u16 {
                 };
             }
         } else if (seq[0] == 'O') {
-            const seq2 = try stdin.read(seq[1..2]);
+            const seq2 = try stdin.*.readSliceShort(seq[1..2]);
             if (seq2 != 1) return '\x1b';
 
             return switch (seq[1]) {
@@ -253,7 +262,11 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     const file_contents = try heap.page_allocator.alloc(u8, file_size);
     defer heap.page_allocator.free(file_contents);
 
-    _ = try file.readAll(file_contents);
+    var file_buffer: [4096]u8 = undefined;
+    var file_reader = file.reader(&file_buffer);
+    const reader = &file_reader.interface;
+
+    try reader.*.readSliceAll(file_contents);
 
     var line_start: usize = 0;
     var line_end: usize = 0;
@@ -294,18 +307,23 @@ fn editorScroll() !void {
 fn editorRefreshScreen(allocator: mem.Allocator) !void {
     try editorScroll();
 
-    var buf = std.ArrayList(u8).init(allocator);
+    var buf = std.array_list.Managed(u8).init(allocator);
     defer buf.deinit();
-    var writer = buf.writer();
+    var list_writer = buf.writer();
 
-    try writer.writeAll("\x1b[?25l");
-    try writer.writeAll("\x1b[H");
+    try list_writer.writeAll("\x1b[?25l");
+    try list_writer.writeAll("\x1b[H");
 
-    try editorDrawRows(writer);
-    try writer.print("\x1b[{d};{d}H", .{ (E.cy - E.rowoff) + 1, (E.cx - E.coloff) + 1 });
+    try editorDrawRows(list_writer);
+    try list_writer.print("\x1b[{d};{d}H", .{ (E.cy - E.rowoff) + 1, (E.cx - E.coloff) + 1 });
 
-    try writer.writeAll("\x1b[?25h");
-    try std.io.getStdOut().writer().writeAll(buf.items);
+    try list_writer.writeAll("\x1b[?25h");
+
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+    try stdout.writeAll(buf.items);
+    try stdout.flush();
 }
 
 fn editorDrawRows(writer: anytype) !void {
@@ -375,7 +393,7 @@ fn editorMoveCursor(key: u16) void {
         @intFromEnum(editorKey.ARROW_UP) => if (E.cy != 0) {
             E.cy -= 1;
         },
-        @intFromEnum(editorKey.ARROW_DOWN) => if (E.cy < E.numrows - 1) {
+        @intFromEnum(editorKey.ARROW_DOWN) => if (E.numrows > 0 and E.cy < E.numrows - 1) {
             E.cy += 1;
         },
         else => {},
@@ -393,8 +411,13 @@ fn editorProcessKeypress() !KeyAction {
 
     return switch (c) {
         CTRL_KEY('q') => {
-            try std.io.getStdOut().writer().writeAll("\x1b[2J");
-            try std.io.getStdOut().writer().writeAll("\x1b[H");
+            var stdout_buffer: [1024]u8 = undefined;
+            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            const stdout = &stdout_writer.interface;
+
+            try stdout.writeAll("\x1b[2J");
+            try stdout.writeAll("\x1b[H");
+            try stdout.flush();
             return .Quit;
         },
         @intFromEnum(editorKey.HOME_KEY) => {
