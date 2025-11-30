@@ -319,7 +319,7 @@ fn editorRefreshScreen(allocator: mem.Allocator) !void {
     try list_writer.writeAll("\x1b[H");
 
     try editorDrawRows(list_writer);
-    try list_writer.print("\x1b[{d};{d}H", .{ (E.cy - E.rowoff) + 1, (E.cx - E.coloff) + 1 });
+    try list_writer.print("\x1b[{d};{d}H", .{ (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1 });
 
     try list_writer.writeAll("\x1b[?25h");
 
