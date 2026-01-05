@@ -35,6 +35,7 @@ const EditorConfig = struct {
 
     numrows: u16,
     rows: []Erow,
+    filename: ?[]const u8,
 
     orig_termios: std.posix.termios,
 };
@@ -51,6 +52,7 @@ var E = EditorConfig{
 
     .numrows = 0,
     .rows = undefined,
+    .filename = null,
 
     .orig_termios = undefined,
 };
@@ -270,12 +272,18 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
 
 //*** file i/o ***/
 fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
+    if (E.filename) |old_filename| {
+        allocator.free(old_filename);
+    }
+
+    E.filename = try allocator.dupe(u8, filename);
+
     const file = try fs.cwd().openFile(filename, .{ .mode = .read_only });
     defer file.close();
 
     const file_size = try file.getEndPos();
-    const file_contents = try heap.page_allocator.alloc(u8, file_size);
-    defer heap.page_allocator.free(file_contents);
+    const file_contents = try allocator.alloc(u8, file_size);
+    defer allocator.free(file_contents);
 
     var file_buffer: [4096]u8 = undefined;
     var file_reader = file.reader(&file_buffer);
@@ -493,6 +501,7 @@ fn initEditor() void {
     E.coloff = 0;
     E.numrows = 0;
     E.rows = &[0]Erow{};
+    E.filename = null;
 
     getWindowSize(&E.screenrows, &E.screencols) catch {
         // Fallback values if we can't get terminal size for some reason
