@@ -324,6 +324,16 @@ fn editorScroll() !void {
     }
 }
 
+fn editorDrawStatusBar(list_writer: anytype) !void {
+    try list_writer.writeAll("\x1b[7m"); // Invert colors
+    var len: usize = 0;
+    while (len < E.screencols) {
+        try list_writer.writeAll(" ");
+        len += 1;
+    }
+    try list_writer.writeAll("\x1b[m"); // Reset formatting
+}
+
 fn editorRefreshScreen(allocator: mem.Allocator) !void {
     try editorScroll();
 
@@ -335,6 +345,7 @@ fn editorRefreshScreen(allocator: mem.Allocator) !void {
     try list_writer.writeAll("\x1b[H");
 
     try editorDrawRows(list_writer);
+    try editorDrawStatusBar(list_writer);
     try list_writer.print("\x1b[{d};{d}H", .{ (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1 });
 
     try list_writer.writeAll("\x1b[?25h");
