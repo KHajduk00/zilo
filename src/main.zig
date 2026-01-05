@@ -201,6 +201,19 @@ fn getWindowSize(rows: *u16, cols: *u16) !void {
     cols.* = ws.col;
 }
 
+fn editorRowCxToRx(row: *const Erow, cx: u16) u16 {
+    var rx: u16 = 0;
+    var j: u16 = 0;
+    while (j < cx) : (j += 1) {
+        if (row.chars[j] == '\t') {
+            rx += (ZILO_TAB_STOP - 1) - (rx % ZILO_TAB_STOP) + 1;
+        } else {
+            rx += 1;
+        }
+    }
+    return rx;
+}
+
 fn editorAppendRow(allocator: mem.Allocator, s: []const u8) !void {
     const at = E.numrows;
     E.rows = try allocator.realloc(E.rows, E.numrows + 1);
