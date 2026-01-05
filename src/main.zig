@@ -382,9 +382,7 @@ fn editorDrawRows(writer: anytype) !void {
         }
 
         try writer.writeAll("\x1b[K");
-        if (y < E.screenrows - 1) {
-            try writer.writeAll("\r\n");
-        }
+        try writer.writeAll("\r\n");
     }
 }
 
@@ -490,6 +488,7 @@ fn initEditor() void {
         E.screenrows = 24;
         E.screencols = 80;
     };
+    E.screenrows -= 1;
 }
 
 pub fn main() anyerror!void {
