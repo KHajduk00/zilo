@@ -445,7 +445,9 @@ fn editorProcessKeypress() !KeyAction {
             return .NoOp;
         },
         @intFromEnum(editorKey.END_KEY) => {
-            E.cx = E.screencols - 1;
+            if (E.cy < E.numrows) {
+                E.cx = @intCast(E.rows[E.cy].size);
+            }
             return .NoOp;
         },
         @intFromEnum(editorKey.PAGE_UP), @intFromEnum(editorKey.PAGE_DOWN) => {
