@@ -449,9 +449,19 @@ fn editorProcessKeypress() !KeyAction {
             return .NoOp;
         },
         @intFromEnum(editorKey.PAGE_UP), @intFromEnum(editorKey.PAGE_DOWN) => {
+            if (c == @intFromEnum(editorKey.PAGE_UP)) {
+                E.cy = E.rowoff;
+            } else {
+                E.cy = E.rowoff + E.screenrows - 1;
+                if (E.cy > E.numrows) E.cy = E.numrows;
+            }
+
             var times = E.screenrows;
             while (times != 0) : (times -= 1) {
-                editorMoveCursor(if (c == @intFromEnum(editorKey.PAGE_UP)) @intFromEnum(editorKey.ARROW_UP) else @intFromEnum(editorKey.ARROW_DOWN));
+                editorMoveCursor(if (c == @intFromEnum(editorKey.PAGE_UP))
+                    @intFromEnum(editorKey.ARROW_UP)
+                else
+                    @intFromEnum(editorKey.ARROW_DOWN));
             }
             return .NoOp;
         },
