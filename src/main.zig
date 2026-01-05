@@ -334,11 +334,24 @@ fn editorScroll() !void {
 
 fn editorDrawStatusBar(list_writer: anytype) !void {
     try list_writer.writeAll("\x1b[7m"); // Invert colors
-    var len: usize = 0;
+    var status: [80]u8 = undefined;
+
+    const status_slice = try std.fmt.bufPrint(&status, "{s} - {d} lines", .{
+        if (E.filename) |fname| fname else "[No Name]",
+        E.numrows,
+    });
+
+    var len = status_slice.len;
+    if (len > E.screencols) {
+        len = E.screencols;
+    }
+
+    try list_writer.writeAll(status[0..len]);
     while (len < E.screencols) {
         try list_writer.writeAll(" ");
         len += 1;
     }
+
     try list_writer.writeAll("\x1b[m"); // Reset formatting
 }
 
