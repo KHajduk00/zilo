@@ -37,6 +37,9 @@ const EditorConfig = struct {
     rows: []Erow,
     filename: ?[]const u8,
 
+    statusmsg: [80]u8,
+    statusmsg_time: i64,
+
     orig_termios: std.posix.termios,
 };
 
@@ -53,6 +56,9 @@ var E = EditorConfig{
     .numrows = 0,
     .rows = undefined,
     .filename = null,
+
+    .statusmsg = undefined,
+    .statusmsg_time = 0,
 
     .orig_termios = undefined,
 };
@@ -521,6 +527,8 @@ fn initEditor() void {
     E.numrows = 0;
     E.rows = &[0]Erow{};
     E.filename = null;
+    E.statusmsg[0] = 0;
+    E.statusmsg_time = 0;
 
     getWindowSize(&E.screenrows, &E.screencols) catch {
         // Fallback values if we can't get terminal size for some reason
