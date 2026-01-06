@@ -373,6 +373,25 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     }
 }
 
+fn editorSave(allocator: mem.Allocator) !void {
+    if (E.filename == null) return;
+
+    // Convert rows to a single buffer
+    const buf = try editorRowsToString(allocator);
+    const len = buf.len;
+
+    // Open file for read/write, create if it doesn't exist, set permissions to 0644
+    const file = try fs.cwd().openFile(E.filename, .{ .mode = .read_write, .create = true });
+    defer file.close();
+
+    // Truncate the file to the buffer length
+    try file.truncate(len);
+
+    // Write the buffer and then free it
+    try file.writer().writeAll(buf);
+    allocator.free(buf);
+}
+
 //*** output ***//
 fn editorScroll() !void {
     E.rx = 0;
