@@ -381,7 +381,7 @@ fn editorSave(allocator: mem.Allocator) !void {
     defer allocator.free(buf);
 
     // Unwrap the optional filename
-    const filename = E.filename.?; // Safe because we checked for null above
+    const filename = E.filename.?; // Safe because we checked for null in first line
 
     // Open file for read/write, create if it doesn't exist
     const file = try fs.cwd().createFile(filename, .{ .read = true, .truncate = true });
