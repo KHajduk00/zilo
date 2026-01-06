@@ -11,10 +11,12 @@ fn CTRL_KEY(comptime k: u8) u8 {
 
 const ZILO_TAB_STOP = 8;
 
-const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 'a', ARROW_RIGHT = 'd', ARROW_UP = 'w', ARROW_DOWN = 's', HOME_KEY = 0x1000, END_KEY = 0x1001, PAGE_UP = 0x1002, PAGE_DOWN = 0x1003, DEL_KEY = 0x1004 };
+const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT = 0x1003, ARROW_UP = 0x1000, ARROW_DOWN = 0x1001, HOME_KEY = 0x1004, END_KEY = 0x1005, PAGE_UP = 0x1006, PAGE_DOWN = 0x1007, DEL_KEY = 0x1008 };
 
 //*** data ***//
 const zilo_version = "0.0.1";
+
+var fnPressed: bool = false; // Global FN flag
 
 const Erow = struct {
     size: usize, // Raw string size
@@ -576,6 +578,7 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             }
             return .NoOp;
         },
+
         @intFromEnum(editorKey.ARROW_UP), @intFromEnum(editorKey.ARROW_DOWN), @intFromEnum(editorKey.ARROW_LEFT), @intFromEnum(editorKey.ARROW_RIGHT) => {
             editorMoveCursor(c);
             return .NoOp;
@@ -584,7 +587,17 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
         CTRL_KEY('l'), '\x1b' => .NoOp,
 
         else => {
-            try editorInsertChar(allocator, @intCast(c));
+            if (fnPressed) {
+                switch (c) {
+                    'w' => editorMoveCursor(@intFromEnum(editorKey.ARROW_UP)),
+                    'a' => editorMoveCursor(@intFromEnum(editorKey.ARROW_LEFT)),
+                    's' => editorMoveCursor(@intFromEnum(editorKey.ARROW_DOWN)),
+                    'd' => editorMoveCursor(@intFromEnum(editorKey.ARROW_RIGHT)),
+                    else => try editorInsertChar(allocator, @intCast(c)),
+                }
+            } else {
+                try editorInsertChar(allocator, @intCast(c));
+            }
             return .NoOp;
         },
     };
