@@ -276,6 +276,26 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
     row.rsize = row.size;
 }
 
+fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !void {
+    var insert_at = at;
+    if (insert_at > row.size) {
+        insert_at = row.size;
+    }
+
+    // Reallocate to make room for one more character
+    row.chars = try allocator.realloc(row.chars, row.size + 1);
+
+    // Move characters after insertion point one position to the right
+    if (insert_at < row.size) {
+        std.mem.copyBackwards(u8, row.chars[insert_at + 1 .. row.size + 1], row.chars[insert_at..row.size]);
+    }
+
+    row.size += 1;
+    row.chars[insert_at] = c;
+
+    try editorUpdateRow(allocator, row);
+}
+
 //*** file i/o ***/
 fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     if (E.filename) |old_filename| {
