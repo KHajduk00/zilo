@@ -368,6 +368,21 @@ fn editorDrawStatusBar(list_writer: anytype) !void {
     try list_writer.writeAll("\r\n");
 }
 
+fn editorDrawMessageBar(list_writer: anytype) !void {
+    try list_writer.writeAll("\x1b[K");
+
+    var msg_len: usize = 0;
+    while (msg_len < E.statusmsg.len and E.statusmsg[msg_len] != 0) {
+        msg_len += 1;
+    }
+    if (msg_len > E.screencols) {
+        msg_len = E.screencols;
+    }
+    if (msg_len > 0 and std.time.timestamp() - E.statusmsg_time < 5) {
+        try list_writer.writeAll(E.statusmsg[0..msg_len]);
+    }
+}
+
 fn editorRefreshScreen(allocator: mem.Allocator) !void {
     try editorScroll();
 
@@ -380,6 +395,8 @@ fn editorRefreshScreen(allocator: mem.Allocator) !void {
 
     try editorDrawRows(list_writer);
     try editorDrawStatusBar(list_writer);
+    try editorDrawMessageBar(list_writer);
+
     try list_writer.print("\x1b[{d};{d}H", .{ (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1 });
 
     try list_writer.writeAll("\x1b[?25h");
