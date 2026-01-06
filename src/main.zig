@@ -430,6 +430,17 @@ fn editorDrawRows(writer: anytype) !void {
     }
 }
 
+fn editorSetStatusMessage(comptime fmt: []const u8, args: anytype) void {
+    const message = std.fmt.bufPrint(&E.statusmsg, fmt, args) catch {
+        E.statusmsg[0] = 0;
+        return;
+    };
+    if (message.len < E.statusmsg.len) {
+        E.statusmsg[message.len] = 0;
+    }
+    E.statusmsg_time = std.time.timestamp();
+}
+
 //*** input ***/
 fn editorMoveCursor(key: u16) void {
     var row: ?*Erow = if (E.cy < E.numrows) &E.rows[E.cy] else null;
@@ -553,6 +564,8 @@ pub fn main() anyerror!void {
     if (args.len > 1) {
         try editorOpen(allocator, args[1]);
     }
+
+    editorSetStatusMessage("HELP: Ctrl-Q = quit", .{});
 
     while (true) {
         try editorRefreshScreen(allocator);
