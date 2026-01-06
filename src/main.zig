@@ -325,7 +325,7 @@ fn editorRowsToString(allocator: mem.Allocator) ![]u8 {
 
     i = 0;
     while (i < E.numrows) : (i += 1) {
-        std.mem.copy(u8, buf[p .. p + E.rows[i].size], E.rows[i].chars[0..E.rows[i].size]);
+        @memcpy(buf[p .. p + E.rows[i].size], E.rows[i].chars[0..E.rows[i].size]);
         p += E.rows[i].size;
         buf[p] = '\n';
         p += 1;
@@ -378,18 +378,17 @@ fn editorSave(allocator: mem.Allocator) !void {
 
     // Convert rows to a single buffer
     const buf = try editorRowsToString(allocator);
-    const len = buf.len;
+    defer allocator.free(buf);
 
-    // Open file for read/write, create if it doesn't exist, set permissions to 0644
-    const file = try fs.cwd().openFile(E.filename, .{ .mode = .read_write, .create = true });
+    // Unwrap the optional filename
+    const filename = E.filename.?; // Safe because we checked for null above
+
+    // Open file for read/write, create if it doesn't exist
+    const file = try fs.cwd().createFile(filename, .{ .read = true, .truncate = true });
     defer file.close();
 
-    // Truncate the file to the buffer length
-    try file.truncate(len);
-
-    // Write the buffer and then free it
-    try file.writer().writeAll(buf);
-    allocator.free(buf);
+    // Write the buffer
+    try file.writeAll(buf);
 }
 
 //*** output ***//
@@ -587,6 +586,10 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             try stdout.writeAll("\x1b[H");
             try stdout.flush();
             return .Quit;
+        },
+        CTRL_KEY('s') => {
+            try editorSave(allocator);
+            return .NoOp;
         },
         @intFromEnum(editorKey.HOME_KEY) => {
             E.cx = 0;
