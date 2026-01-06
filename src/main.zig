@@ -313,6 +313,27 @@ fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
 }
 
 //*** file i/o ***//
+fn editorRowsToString(allocator: mem.Allocator) ![]u8 {
+    var total_size: usize = 0;
+    var i: usize = 0;
+    while (i < E.numrows) : (i += 1) {
+        total_size += E.rows[i].size + 1; // +1 for newline
+    }
+
+    const buf = try allocator.alloc(u8, total_size);
+    var p: usize = 0;
+
+    i = 0;
+    while (i < E.numrows) : (i += 1) {
+        std.mem.copy(u8, buf[p .. p + E.rows[i].size], E.rows[i].chars[0..E.rows[i].size]);
+        p += E.rows[i].size;
+        buf[p] = '\n';
+        p += 1;
+    }
+
+    return buf;
+}
+
 fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     if (E.filename) |old_filename| {
         allocator.free(old_filename);
