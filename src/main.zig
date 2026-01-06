@@ -530,7 +530,7 @@ fn editorMoveCursor(key: u16) void {
     }
 }
 
-fn editorProcessKeypress() !KeyAction {
+fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
     const c = try editorReadKey();
 
     return switch (c) {
@@ -575,7 +575,10 @@ fn editorProcessKeypress() !KeyAction {
             editorMoveCursor(c);
             return .NoOp;
         },
-        else => .NoOp,
+        else => {
+            try editorInsertChar(allocator, @intCast(c));
+            return .NoOp;
+        },
     };
 }
 
@@ -620,7 +623,7 @@ pub fn main() anyerror!void {
 
     while (true) {
         try editorRefreshScreen(allocator);
-        switch (try editorProcessKeypress()) {
+        switch (try editorProcessKeypress(allocator)) {
             .Quit => break,
             else => {},
         }
