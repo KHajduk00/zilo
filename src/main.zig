@@ -13,7 +13,7 @@ const ZILO_TAB_STOP = 8;
 
 const editorKey = enum(u16) { ARROW_LEFT = 'a', ARROW_RIGHT = 'd', ARROW_UP = 'w', ARROW_DOWN = 's', HOME_KEY = 0x1000, END_KEY = 0x1001, PAGE_UP = 0x1002, PAGE_DOWN = 0x1003, DEL_KEY = 0x1004 };
 
-//*** data ***/
+//*** data ***//
 const zilo_version = "0.0.1";
 
 const Erow = struct {
@@ -68,7 +68,7 @@ const KeyAction = enum {
     NoOp,
 };
 
-//*** terminal ***/
+//*** terminal ***//
 // Function to restore the original terminal settings
 export fn disableRawMode() void {
     std.posix.tcsetattr(std.fs.File.stdin().handle, .FLUSH, E.orig_termios) catch {
@@ -296,7 +296,21 @@ fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !
     try editorUpdateRow(allocator, row);
 }
 
-//*** file i/o ***/
+//*** editor operations ***//
+fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
+    if (E.cy == E.numrows) {
+        try editorAppendRow(allocator, "");
+    }
+    try editorRowInsertChar(
+        allocator,
+        &E.rows[E.cy],
+        @intCast(E.cx),
+        c,
+    );
+    E.cx += 1;
+}
+
+//*** file i/o ***//
 fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     if (E.filename) |old_filename| {
         allocator.free(old_filename);
@@ -336,8 +350,7 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     }
 }
 
-//*** output ***/
-
+//*** output ***//
 fn editorScroll() !void {
     E.rx = 0;
     if (E.cy < E.numrows) {
@@ -479,7 +492,7 @@ fn editorSetStatusMessage(comptime fmt: []const u8, args: anytype) void {
     E.statusmsg_time = std.time.timestamp();
 }
 
-//*** input ***/
+//*** input ***//
 fn editorMoveCursor(key: u16) void {
     var row: ?*Erow = if (E.cy < E.numrows) &E.rows[E.cy] else null;
 
@@ -566,7 +579,7 @@ fn editorProcessKeypress() !KeyAction {
     };
 }
 
-//*** init ***/
+//*** init ***//
 fn initEditor() void {
     E.cx = 0;
     E.cy = 0;
