@@ -11,7 +11,7 @@ fn CTRL_KEY(comptime k: u8) u8 {
 
 const ZILO_TAB_STOP = 8;
 
-const editorKey = enum(u16) { ARROW_LEFT = 'a', ARROW_RIGHT = 'd', ARROW_UP = 'w', ARROW_DOWN = 's', HOME_KEY = 0x1000, END_KEY = 0x1001, PAGE_UP = 0x1002, PAGE_DOWN = 0x1003, DEL_KEY = 0x1004 };
+const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 'a', ARROW_RIGHT = 'd', ARROW_UP = 'w', ARROW_DOWN = 's', HOME_KEY = 0x1000, END_KEY = 0x1001, PAGE_UP = 0x1002, PAGE_DOWN = 0x1003, DEL_KEY = 0x1004 };
 
 //*** data ***//
 const zilo_version = "0.0.1";
@@ -534,6 +534,8 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
     const c = try editorReadKey();
 
     return switch (c) {
+        '\r' => .NoOp, //TODO
+
         CTRL_KEY('q') => {
             var stdout_buffer: [1024]u8 = undefined;
             var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
@@ -554,6 +556,9 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             }
             return .NoOp;
         },
+
+        @intFromEnum(editorKey.BACKSPACE), CTRL_KEY('h'), @intFromEnum(editorKey.DEL_KEY) => .NoOp, //TODO
+
         @intFromEnum(editorKey.PAGE_UP), @intFromEnum(editorKey.PAGE_DOWN) => {
             if (c == @intFromEnum(editorKey.PAGE_UP)) {
                 E.cy = E.rowoff;
@@ -575,6 +580,9 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             editorMoveCursor(c);
             return .NoOp;
         },
+
+        CTRL_KEY('l'), '\x1b' => .NoOp,
+
         else => {
             try editorInsertChar(allocator, @intCast(c));
             return .NoOp;
