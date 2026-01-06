@@ -365,6 +365,7 @@ fn editorDrawStatusBar(list_writer: anytype) !void {
         }
     }
     try list_writer.writeAll("\x1b[m"); // Reset formatting
+    try list_writer.writeAll("\r\n");
 }
 
 fn editorRefreshScreen(allocator: mem.Allocator) !void {
@@ -546,7 +547,7 @@ fn initEditor() void {
         E.screenrows = 24;
         E.screencols = 80;
     };
-    E.screenrows -= 1;
+    E.screenrows -= 2;
 }
 
 pub fn main() anyerror!void {
