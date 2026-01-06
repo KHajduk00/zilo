@@ -335,11 +335,13 @@ fn editorScroll() !void {
 fn editorDrawStatusBar(list_writer: anytype) !void {
     try list_writer.writeAll("\x1b[7m"); // Invert colors
     var status: [80]u8 = undefined;
+    var rstatus: [80]u8 = undefined;
 
     const status_slice = try std.fmt.bufPrint(&status, "{s} - {d} lines", .{
         if (E.filename) |fname| fname else "[No Name]",
         E.numrows,
     });
+    const rstatus_slice = try std.fmt.bufPrint(&rstatus, "{d}/{d}", .{ E.cy + 1, E.numrows });
 
     var len = status_slice.len;
     if (len > E.screencols) {
@@ -348,10 +350,14 @@ fn editorDrawStatusBar(list_writer: anytype) !void {
 
     try list_writer.writeAll(status[0..len]);
     while (len < E.screencols) {
-        try list_writer.writeAll(" ");
-        len += 1;
+        if (E.screencols - len == rstatus_slice.len) {
+            try list_writer.writeAll(rstatus_slice);
+            break;
+        } else {
+            try list_writer.writeAll(" ");
+            len += 1;
+        }
     }
-
     try list_writer.writeAll("\x1b[m"); // Reset formatting
 }
 
