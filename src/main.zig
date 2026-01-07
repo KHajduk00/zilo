@@ -243,6 +243,7 @@ fn editorAppendRow(allocator: mem.Allocator, s: []const u8) !void {
     try editorUpdateRow(allocator, &E.rows[at]);
 
     E.numrows += 1;
+    E.dirty += 1;
 }
 
 fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
@@ -298,6 +299,7 @@ fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !
     row.chars[insert_at] = c;
 
     try editorUpdateRow(allocator, row);
+    E.dirty += 1;
 }
 
 //*** editor operations ***//
