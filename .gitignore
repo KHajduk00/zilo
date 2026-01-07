@@ -4,3 +4,6 @@ zig-out/
 
 #zon
 build.zig.zon
+
+#test file
+test.txt

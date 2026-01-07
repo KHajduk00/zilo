@@ -375,6 +375,7 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
         if (line_end < file_size and file_contents[line_end] == '\n') line_end += 1;
         line_start = line_end;
     }
+    E.dirty = 0;
 }
 
 fn editorSave(allocator: mem.Allocator) !void {
@@ -392,6 +393,7 @@ fn editorSave(allocator: mem.Allocator) !void {
         defer file.close();
         // Try to write
         if (file.writeAll(buf)) |_| {
+            E.dirty = 0;
             editorSetStatusMessage("{d} bytes written to disk", .{buf.len});
             return;
         } else |_| {
