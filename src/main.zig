@@ -10,6 +10,7 @@ fn CTRL_KEY(comptime k: u8) u8 {
 }
 
 const ZILO_TAB_STOP = 8;
+const ZILO_QUIT_TIMES = 3;
 
 const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT = 0x1003, ARROW_UP = 0x1000, ARROW_DOWN = 0x1001, HOME_KEY = 0x1004, END_KEY = 0x1005, PAGE_UP = 0x1006, PAGE_DOWN = 0x1007, DEL_KEY = 0x1008 };
 
@@ -17,6 +18,7 @@ const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT
 const zilo_version = "0.0.1";
 
 var fnPressed: bool = false; // Global FN flag
+var quit_times: u8 = ZILO_QUIT_TIMES; // Global quit times counter
 
 const Erow = struct {
     size: usize, // Raw string size
@@ -595,6 +597,12 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
         '\r' => .NoOp, //TODO
 
         CTRL_KEY('q') => {
+            if (E.dirty > 0 and quit_times > 0) {
+                editorSetStatusMessage("WARNING!!! File has unsaved changes. Press Ctrl-Q {d} more times to quit.", .{quit_times});
+                quit_times -= 1;
+                return .NoOp;
+            }
+
             var stdout_buffer: [1024]u8 = undefined;
             var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
             const stdout = &stdout_writer.interface;
@@ -658,6 +666,7 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             } else {
                 try editorInsertChar(allocator, @intCast(c));
             }
+            quit_times = ZILO_QUIT_TIMES;
             return .NoOp;
         },
     };
