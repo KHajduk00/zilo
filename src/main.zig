@@ -304,6 +304,19 @@ fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !
     E.dirty += 1;
 }
 
+fn editorRowDelChar(allocator: mem.Allocator, row: *Erow, at: usize) !void {
+    if (at >= row.size) return;
+
+    // Move characters after deletion point one position to the left
+    if (at < row.size - 1) {
+        @memcpy(row.chars[at .. row.size - 1], row.chars[at + 1 .. row.size]);
+    }
+
+    row.size -= 1;
+    try editorUpdateRow(allocator, row);
+    E.dirty += 1;
+}
+
 //*** editor operations ***//
 fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
     if (E.cy == E.numrows) {
