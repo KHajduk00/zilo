@@ -429,9 +429,10 @@ fn editorDrawStatusBar(list_writer: anytype) !void {
     var status: [80]u8 = undefined;
     var rstatus: [80]u8 = undefined;
 
-    const status_slice = try std.fmt.bufPrint(&status, "{s} - {d} lines", .{
+    const status_slice = try std.fmt.bufPrint(&status, "{s} - {d} lines {s}", .{
         if (E.filename) |fname| fname else "[No Name]",
         E.numrows,
+        if (E.dirty > 0) "modified" else "",
     });
     const rstatus_slice = try std.fmt.bufPrint(&rstatus, "{d}/{d}", .{ E.cy + 1, E.numrows });
 
