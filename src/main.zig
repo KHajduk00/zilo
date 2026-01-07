@@ -294,7 +294,7 @@ fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !
 
     // Move characters after insertion point one position to the right
     if (insert_at < row.size) {
-        std.mem.copyBackwards(u8, row.chars[insert_at + 1 .. row.size + 1], row.chars[insert_at..row.size]);
+        @memmove(row.chars[insert_at + 1 .. row.size + 1], row.chars[insert_at..row.size]);
     }
 
     row.size += 1;
@@ -309,7 +309,7 @@ fn editorRowDelChar(allocator: mem.Allocator, row: *Erow, at: usize) !void {
 
     // Move characters after deletion point one position to the left
     if (at < row.size - 1) {
-        @memcpy(row.chars[at .. row.size - 1], row.chars[at + 1 .. row.size]);
+        @memmove(row.chars[at .. row.size - 1], row.chars[at + 1 .. row.size]);
     }
 
     row.size -= 1;
@@ -650,7 +650,13 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             return .NoOp;
         },
 
-        @intFromEnum(editorKey.BACKSPACE), CTRL_KEY('h'), @intFromEnum(editorKey.DEL_KEY) => .NoOp, //TODO
+        @intFromEnum(editorKey.BACKSPACE), CTRL_KEY('h'), @intFromEnum(editorKey.DEL_KEY) => {
+            if (c == @intFromEnum(editorKey.DEL_KEY)) {
+                editorMoveCursor(@intFromEnum(editorKey.ARROW_RIGHT));
+            }
+            try editorDelChar(allocator);
+            return .NoOp;
+        },
 
         @intFromEnum(editorKey.PAGE_UP), @intFromEnum(editorKey.PAGE_DOWN) => {
             if (c == @intFromEnum(editorKey.PAGE_UP)) {
