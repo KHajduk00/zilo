@@ -38,6 +38,7 @@ const EditorConfig = struct {
     numrows: u16,
     rows: []Erow,
     filename: ?[]const u8,
+    dirty: u16,
 
     statusmsg: [80]u8,
     statusmsg_time: i64,
@@ -58,6 +59,7 @@ var E = EditorConfig{
     .numrows = 0,
     .rows = undefined,
     .filename = null,
+    .dirty = 0,
 
     .statusmsg = undefined,
     .statusmsg_time = 0,
@@ -666,6 +668,7 @@ fn initEditor() void {
     E.numrows = 0;
     E.rows = &[0]Erow{};
     E.filename = null;
+    E.dirty = 0;
     E.statusmsg[0] = 0;
     E.statusmsg_time = 0;
 
