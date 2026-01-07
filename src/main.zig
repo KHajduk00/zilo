@@ -384,11 +384,21 @@ fn editorSave(allocator: mem.Allocator) !void {
     const filename = E.filename.?; // Safe because we checked for null in first line
 
     // Open file for read/write, create if it doesn't exist
-    const file = try fs.cwd().createFile(filename, .{ .read = true, .truncate = true });
-    defer file.close();
+    if (fs.cwd().createFile(filename, .{ .read = true, .truncate = true })) |file| {
+        defer file.close();
+        // Try to write
+        if (file.writeAll(buf)) |_| {
+            editorSetStatusMessage("{d} bytes written to disk", .{buf.len});
+            return;
+        } else |_| {
+            // Write failed, fall through to error message
+        }
+    } else |_| {
+        // File creation failed, fall through to error message
+    }
 
-    // Write the buffer
-    try file.writeAll(buf);
+    // Single error message - reached if ANY operation failed
+    editorSetStatusMessage("Can't save! I/O error", .{});
 }
 
 //*** output ***//
@@ -683,7 +693,7 @@ pub fn main() anyerror!void {
         try editorOpen(allocator, args[1]);
     }
 
-    editorSetStatusMessage("HELP: Ctrl-Q = quit", .{});
+    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save", .{});
 
     while (true) {
         try editorRefreshScreen(allocator);
