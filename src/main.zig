@@ -331,6 +331,16 @@ fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
     E.cx += 1;
 }
 
+fn editorDelChar(allocator: mem.Allocator) !void {
+    if (E.cy == E.numrows) return;
+
+    const row = &E.rows[E.cy];
+    if (E.cx > 0) {
+        try editorRowDelChar(allocator, row, E.cx - 1);
+        E.cx -= 1;
+    }
+}
+
 //*** file i/o ***//
 fn editorRowsToString(allocator: mem.Allocator) ![]u8 {
     var total_size: usize = 0;
