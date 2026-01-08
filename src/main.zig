@@ -322,6 +322,20 @@ fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !
     E.dirty += 1;
 }
 
+fn editorRowAppendString(allocator: mem.Allocator, row: *Erow, s: []const u8) !void {
+    const old_size = row.size;
+
+    row.chars = try allocator.realloc(row.chars, old_size + s.len + 1);
+
+    @memcpy(row.chars[old_size .. old_size + s.len], s);
+
+    row.size += s.len;
+    row.chars[row.size] = 0;
+
+    try editorUpdateRow(allocator, row);
+    E.dirty += 1;
+}
+
 fn editorRowDelChar(allocator: mem.Allocator, row: *Erow, at: usize) !void {
     if (at >= row.size) return;
 
