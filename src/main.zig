@@ -283,6 +283,24 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
     row.rsize = row.size;
 }
 
+fn editorFreeRow(allocator: mem.Allocator, row: *Erow) void {
+    allocator.free(row.chars);
+    allocator.free(row.render);
+}
+
+fn editorDelRow(allocator: mem.Allocator, at: usize) void {
+    if (at >= E.numrows) return;
+
+    editorFreeRow(allocator, &E.rows[at]);
+
+    if (at + 1 < E.numrows) {
+        @memmove(E.rows[at .. E.numrows - 1], E.rows[at + 1 .. E.numrows]);
+    }
+
+    E.numrows -= 1;
+    E.dirty += 1;
+}
+
 fn editorRowInsertChar(allocator: mem.Allocator, row: *Erow, at: usize, c: u8) !void {
     var insert_at = at;
     if (insert_at > row.size) {
