@@ -365,11 +365,17 @@ fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
 
 fn editorDelChar(allocator: mem.Allocator) !void {
     if (E.cy == E.numrows) return;
+    if (E.cx == 0 and E.cy == 0) return;
 
     const row = &E.rows[E.cy];
     if (E.cx > 0) {
         try editorRowDelChar(allocator, row, E.cx - 1);
         E.cx -= 1;
+    } else {
+        E.cx = @intCast(E.rows[E.cy - 1].size);
+        try editorRowAppendString(allocator, &E.rows[E.cy - 1], row.chars[0..row.size]);
+        editorDelRow(allocator, E.cy);
+        E.cy -= 1;
     }
 }
 
