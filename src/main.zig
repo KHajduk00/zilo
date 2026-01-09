@@ -228,9 +228,14 @@ fn editorRowCxToRx(row: *const Erow, cx: u16) u16 {
     return rx;
 }
 
-fn editorAppendRow(allocator: mem.Allocator, s: []const u8) !void {
-    const at = E.numrows;
+fn editorInsertRow(allocator: mem.Allocator, at: usize, s: []const u8) !void {
+    if (at > E.numrows) return;
+
     E.rows = try allocator.realloc(E.rows, E.numrows + 1);
+
+    if (at < E.numrows) {
+        @memmove(E.rows[at + 1 .. E.numrows + 1], E.rows[at..E.numrows]);
+    }
 
     E.rows[at] = .{
         .size = s.len,
@@ -352,7 +357,7 @@ fn editorRowDelChar(allocator: mem.Allocator, row: *Erow, at: usize) !void {
 //*** editor operations ***//
 fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
     if (E.cy == E.numrows) {
-        try editorAppendRow(allocator, "");
+        try editorInsertRow(allocator, E.numrows, "");
     }
     try editorRowInsertChar(
         allocator,
@@ -432,7 +437,7 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
             line_end += 1;
         }
 
-        try editorAppendRow(allocator, file_contents[line_start..line_end]);
+        try editorInsertRow(allocator, E.numrows, file_contents[line_start..line_end]);
 
         if (line_end < file_size and file_contents[line_end] == '\r') line_end += 1;
         if (line_end < file_size and file_contents[line_end] == '\n') line_end += 1;
