@@ -384,6 +384,23 @@ fn editorDelChar(allocator: mem.Allocator) !void {
     }
 }
 
+fn editorInsertNewline(allocator: mem.Allocator) !void {
+    if (E.cx == 0) {
+        try editorInsertRow(allocator, E.cy, "");
+    } else {
+        var row = &E.rows[E.cy];
+        try editorInsertRow(allocator, E.cy + 1, row.chars[E.cx..row.size]);
+
+        row = &E.rows[E.cy];
+
+        row.size = E.cx;
+        row.chars[row.size] = 0;
+        try editorUpdateRow(allocator, row);
+    }
+    E.cy += 1;
+    E.cx = 0;
+}
+
 //*** file i/o ***//
 fn editorRowsToString(allocator: mem.Allocator) ![]u8 {
     var total_size: usize = 0;
@@ -660,7 +677,10 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
     const c = try editorReadKey();
 
     return switch (c) {
-        '\r' => .NoOp, //TODO
+        '\r' => {
+            try editorInsertNewline(allocator);
+            return .NoOp;
+        },
 
         CTRL_KEY('q') => {
             if (E.dirty > 0 and quit_times > 0) {
