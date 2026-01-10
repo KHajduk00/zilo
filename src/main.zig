@@ -464,7 +464,9 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
 }
 
 fn editorSave(allocator: mem.Allocator) !void {
-    if (E.filename == null) return;
+    if (E.filename == null) {
+        E.filename = try editorPrompt(allocator, "Save as: ");
+    }
 
     // Convert rows to a single buffer
     const buf = try editorRowsToString(allocator);
@@ -636,6 +638,35 @@ fn editorSetStatusMessage(comptime fmt: []const u8, args: anytype) void {
 }
 
 //*** input ***//
+fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8) !?[]u8 {
+    var bufsize: usize = 128;
+    var buf = try allocator.alloc(u8, bufsize);
+
+    var buflen: usize = 0;
+    buf[0] = 0;
+
+    while (true) {
+        editorSetStatusMessage(prompt ++ "{s}", .{buf[0..buflen]});
+        try editorRefreshScreen(allocator);
+
+        const c = try editorReadKey();
+        if (c == '\r') {
+            if (buflen != 0) {
+                editorSetStatusMessage("", .{});
+                return try allocator.realloc(buf, buflen);
+            }
+        } else if (!std.ascii.isControl(@intCast(c)) and c < 128) {
+            if (buflen == bufsize - 1) {
+                bufsize *= 2;
+                buf = try allocator.realloc(buf, bufsize);
+            }
+            buf[buflen] = @intCast(c);
+            buflen += 1;
+            buf[buflen] = 0;
+        }
+    }
+}
+
 fn editorMoveCursor(key: u16) void {
     var row: ?*Erow = if (E.cy < E.numrows) &E.rows[E.cy] else null;
 
