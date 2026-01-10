@@ -466,6 +466,10 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
 fn editorSave(allocator: mem.Allocator) !void {
     if (E.filename == null) {
         E.filename = try editorPrompt(allocator, "Save as: ");
+        if (E.filename == null) {
+            editorSetStatusMessage("Save aborted", .{});
+            return;
+        }
     }
 
     // Convert rows to a single buffer
@@ -650,7 +654,11 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8) !?[]u8 {
         try editorRefreshScreen(allocator);
 
         const c = try editorReadKey();
-        if (c == '\r') {
+        if (c == '\x1b') {
+            editorSetStatusMessage("", .{});
+            allocator.free(buf);
+            return null;
+        } else if (c == '\r') {
             if (buflen != 0) {
                 editorSetStatusMessage("", .{});
                 return try allocator.realloc(buf, buflen);
