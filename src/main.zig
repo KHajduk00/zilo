@@ -654,7 +654,12 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8) !?[]u8 {
         try editorRefreshScreen(allocator);
 
         const c = try editorReadKey();
-        if (c == '\x1b') {
+        if (c == @intFromEnum(editorKey.DEL_KEY) or c == CTRL_KEY('h') or c == @intFromEnum(editorKey.BACKSPACE)) {
+            if (buflen != 0) {
+                buflen -= 1;
+                buf[buflen] = 0;
+            }
+        } else if (c == '\x1b') {
             editorSetStatusMessage("", .{});
             allocator.free(buf);
             return null;
