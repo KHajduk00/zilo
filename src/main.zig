@@ -228,6 +228,20 @@ fn editorRowCxToRx(row: *const Erow, cx: u16) u16 {
     return rx;
 }
 
+fn editorRowRxToCx(row: *const Erow, rx: u16) u16 {
+    var cur_rx: u16 = 0;
+    var cx: u16 = 0;
+    while (cx < row.size) : (cx += 1) {
+        if (row.chars[cx] == '\t') {
+            cur_rx += (ZILO_TAB_STOP - 1) - (cur_rx % ZILO_TAB_STOP) + 1;
+        } else {
+            cur_rx += 1;
+        }
+        if (cur_rx > rx) return cx;
+    }
+    return cx;
+}
+
 fn editorInsertRow(allocator: mem.Allocator, at: usize, s: []const u8) !void {
     if (at > E.numrows) return;
 
