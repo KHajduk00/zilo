@@ -514,15 +514,40 @@ fn editorSave(allocator: mem.Allocator) !void {
 
 //*** find ***//
 fn editorFindCallback(query: []const u8, key: u16) void {
+    const search_state = struct {
+        var last_match: i32 = -1;
+        var direction: i8 = 1;
+    };
+
     if (key == '\r' or key == '\x1b') {
+        search_state.last_match = -1;
+        search_state.direction = 1;
         return;
+    } else if (key == @intFromEnum(editorKey.ARROW_RIGHT) or key == @intFromEnum(editorKey.ARROW_DOWN)) {
+        search_state.direction = 1;
+    } else if (key == @intFromEnum(editorKey.ARROW_LEFT) or key == @intFromEnum(editorKey.ARROW_UP)) {
+        search_state.direction = -1;
+    } else {
+        search_state.last_match = -1;
+        search_state.direction = 1;
     }
+
+    if (search_state.last_match == -1) search_state.direction = 1;
+    var current = search_state.last_match;
 
     var i: usize = 0;
     while (i < E.numrows) : (i += 1) {
-        const row = &E.rows[i];
+        current += search_state.direction;
+        if (current == -1) {
+            current = @as(i32, @intCast(E.numrows)) - 1;
+        } else if (current == @as(i32, @intCast(E.numrows))) {
+            current = 0;
+        }
+
+        const row = &E.rows[@intCast(current)];
         if (std.mem.indexOf(u8, row.render[0..row.rsize], query)) |match_index| {
-            E.cy = @intCast(i);
+            search_state.last_match = current;
+            E.cy = @intCast(current);
             E.cx = editorRowRxToCx(row, @intCast(match_index));
             E.rowoff = E.numrows;
             break;
