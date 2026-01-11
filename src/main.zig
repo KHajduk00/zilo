@@ -531,9 +531,19 @@ fn editorFindCallback(query: []const u8, key: u16) void {
 }
 
 fn editorFind(allocator: mem.Allocator) !void {
+    const saved_cx = E.cx;
+    const saved_cy = E.cy;
+    const saved_coloff = E.coloff;
+    const saved_rowoff = E.rowoff;
+
     const query = try editorPrompt(allocator, "Search: ", editorFindCallback);
     if (query) |q| {
         allocator.free(q);
+    } else {
+        E.cx = saved_cx;
+        E.cy = saved_cy;
+        E.coloff = saved_coloff;
+        E.rowoff = saved_rowoff;
     }
 }
 
