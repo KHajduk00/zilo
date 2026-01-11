@@ -525,7 +525,7 @@ fn editorFind(allocator: mem.Allocator) !void {
 
         if (std.mem.indexOf(u8, row.render[0..row.rsize], query)) |match_index| {
             E.cy = @intCast(i);
-            E.cx = @intCast(match_index);
+            E.cx = editorRowRxToCx(row, @intCast(match_index));
             E.rowoff = E.numrows;
             break;
         }
