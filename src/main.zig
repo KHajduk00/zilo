@@ -479,7 +479,7 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
 
 fn editorSave(allocator: mem.Allocator) !void {
     if (E.filename == null) {
-        E.filename = try editorPrompt(allocator, "Save as: ");
+        E.filename = try editorPrompt(allocator, "Save as: ", null);
         if (E.filename == null) {
             editorSetStatusMessage("Save aborted", .{});
             return;
@@ -514,7 +514,7 @@ fn editorSave(allocator: mem.Allocator) !void {
 
 //*** find ***//
 fn editorFind(allocator: mem.Allocator) !void {
-    const query_opt = try editorPrompt(allocator, "Search: ");
+    const query_opt = try editorPrompt(allocator, "Search: ", null);
     if (query_opt == null) return;
     const query = query_opt.?;
     defer allocator.free(query);
@@ -676,10 +676,9 @@ fn editorSetStatusMessage(comptime fmt: []const u8, args: anytype) void {
 }
 
 //*** input ***//
-fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8) !?[]u8 {
+fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8, callback: ?*const fn ([]const u8, u16) void) !?[]u8 {
     var bufsize: usize = 128;
     var buf = try allocator.alloc(u8, bufsize);
-
     var buflen: usize = 0;
     buf[0] = 0;
 
@@ -688,18 +687,21 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8) !?[]u8 {
         try editorRefreshScreen(allocator);
 
         const c = try editorReadKey();
+
         if (c == @intFromEnum(editorKey.DEL_KEY) or c == CTRL_KEY('h') or c == @intFromEnum(editorKey.BACKSPACE)) {
-            if (buflen != 0) {
+            if (buflen > 0) {
                 buflen -= 1;
                 buf[buflen] = 0;
             }
         } else if (c == '\x1b') {
             editorSetStatusMessage("", .{});
+            if (callback) |cb| cb(buf[0..buflen], c);
             allocator.free(buf);
             return null;
         } else if (c == '\r') {
             if (buflen != 0) {
                 editorSetStatusMessage("", .{});
+                if (callback) |cb| cb(buf[0..buflen], c);
                 return try allocator.realloc(buf, buflen);
             }
         } else if (!std.ascii.isControl(@intCast(c)) and c < 128) {
@@ -711,6 +713,8 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8) !?[]u8 {
             buflen += 1;
             buf[buflen] = 0;
         }
+
+        if (callback) |cb| cb(buf[0..buflen], c);
     }
 }
 
