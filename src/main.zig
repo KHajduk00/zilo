@@ -791,6 +791,11 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             return .NoOp;
         },
 
+        CTRL_KEY('f') => {
+            try editorFind(allocator);
+            return .NoOp;
+        },
+
         @intFromEnum(editorKey.BACKSPACE), CTRL_KEY('h'), @intFromEnum(editorKey.DEL_KEY) => {
             if (c == @intFromEnum(editorKey.DEL_KEY)) {
                 editorMoveCursor(@intFromEnum(editorKey.ARROW_RIGHT));
@@ -880,7 +885,7 @@ pub fn main() anyerror!void {
         try editorOpen(allocator, args[1]);
     }
 
-    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save", .{});
+    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save | Ctrl-F = find", .{});
 
     while (true) {
         try editorRefreshScreen(allocator);
