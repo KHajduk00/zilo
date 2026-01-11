@@ -513,22 +513,27 @@ fn editorSave(allocator: mem.Allocator) !void {
 }
 
 //*** find ***//
-fn editorFind(allocator: mem.Allocator) !void {
-    const query_opt = try editorPrompt(allocator, "Search: ", null);
-    if (query_opt == null) return;
-    const query = query_opt.?;
-    defer allocator.free(query);
+fn editorFindCallback(query: []const u8, key: u16) void {
+    if (key == '\r' or key == '\x1b') {
+        return;
+    }
 
     var i: usize = 0;
     while (i < E.numrows) : (i += 1) {
         const row = &E.rows[i];
-
         if (std.mem.indexOf(u8, row.render[0..row.rsize], query)) |match_index| {
             E.cy = @intCast(i);
             E.cx = editorRowRxToCx(row, @intCast(match_index));
             E.rowoff = E.numrows;
             break;
         }
+    }
+}
+
+fn editorFind(allocator: mem.Allocator) !void {
+    const query = try editorPrompt(allocator, "Search: ", editorFindCallback);
+    if (query) |q| {
+        allocator.free(q);
     }
 }
 
