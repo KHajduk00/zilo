@@ -561,7 +561,7 @@ fn editorFind(allocator: mem.Allocator) !void {
     const saved_coloff = E.coloff;
     const saved_rowoff = E.rowoff;
 
-    const query = try editorPrompt(allocator, "Search: ", editorFindCallback);
+    const query = try editorPrompt(allocator, "(Use ESC/Arrows/Enter) Search: ", editorFindCallback);
     if (query) |q| {
         allocator.free(q);
     } else {
