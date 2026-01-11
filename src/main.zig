@@ -744,7 +744,7 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8, callback:
                 if (callback) |cb| cb(buf[0..buflen], c);
                 return try allocator.realloc(buf, buflen);
             }
-        } else if (!std.ascii.isControl(@intCast(c)) and c < 128) {
+        } else if (c < 128 and !std.ascii.isControl(@intCast(c))) {
             if (buflen == bufsize - 1) {
                 bufsize *= 2;
                 buf = try allocator.realloc(buf, bufsize);
