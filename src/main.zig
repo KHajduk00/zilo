@@ -695,10 +695,20 @@ fn editorDrawRows(writer: anytype) !void {
                 const start = E.coloff;
                 len -= start;
                 if (len > E.screencols) len = E.screencols;
-                try writer.writeAll(row.render[start .. start + len]);
+
+                const c = row.render[start .. start + len];
+                var j: usize = 0;
+                while (j < len) : (j += 1) {
+                    if (std.ascii.isDigit(c[j])) {
+                        try writer.writeAll("\x1b[31m");
+                        try writer.writeByte(c[j]);
+                        try writer.writeAll("\x1b[39m");
+                    } else {
+                        try writer.writeByte(c[j]);
+                    }
+                }
             }
         }
-
         try writer.writeAll("\x1b[K");
         try writer.writeAll("\r\n");
     }
