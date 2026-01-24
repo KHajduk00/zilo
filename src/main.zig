@@ -25,6 +25,7 @@ const Erow = struct {
     chars: []u8, // Raw string
     rsize: usize, // Rendered string size
     render: []u8, // Rendered string (with expanded tabs)
+    hl: []u8, // Syntax highlight types for each character
 };
 
 const EditorConfig = struct {
@@ -256,6 +257,7 @@ fn editorInsertRow(allocator: mem.Allocator, at: usize, s: []const u8) !void {
         .chars = try allocator.alloc(u8, s.len + 1),
         .rsize = 0,
         .render = &[_]u8{}, // We initialize as an empty slice (like Null in C)
+        .hl = &[_]u8{},
     };
 
     @memcpy(E.rows[at].chars[0..s.len], s);
@@ -305,6 +307,7 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
 fn editorFreeRow(allocator: mem.Allocator, row: *Erow) void {
     allocator.free(row.chars);
     allocator.free(row.render);
+    allocator.free(row.hl);
 }
 
 fn editorDelRow(allocator: mem.Allocator, at: usize) void {
