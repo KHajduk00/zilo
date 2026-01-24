@@ -9,14 +9,18 @@ fn CTRL_KEY(comptime k: u8) u8 {
     return k & 0x1f;
 }
 
+const zilo_version = "0.0.1";
 const ZILO_TAB_STOP = 8;
 const ZILO_QUIT_TIMES = 3;
 
 const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT = 0x1003, ARROW_UP = 0x1000, ARROW_DOWN = 0x1001, HOME_KEY = 0x1004, END_KEY = 0x1005, PAGE_UP = 0x1006, PAGE_DOWN = 0x1007, DEL_KEY = 0x1008 };
 
-//*** data ***//
-const zilo_version = "0.0.1";
+const editorHiglight = enum(u8) {
+    HL_NORMAL = 0,
+    HL_NUMBER,
+};
 
+//*** data ***//
 var fnPressed: bool = false; // Global FN flag
 var quit_times: u8 = ZILO_QUIT_TIMES; // Global quit times counter
 
