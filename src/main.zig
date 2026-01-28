@@ -394,6 +394,13 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
     }
 }
 
+fn editorSyntaxToColor(hl: u8) u8 {
+    return switch (@as(editorHiglight, @enumFromInt(hl))) {
+        .HL_NUMBER => 31, // Red
+        else => 37, // White (default)
+    };
+}
+
 //*** editor operations ***//
 fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
     if (E.cy == E.numrows) {
@@ -716,24 +723,38 @@ fn editorDrawRows(writer: anytype) !void {
             var len = row.rsize;
 
             if (E.coloff >= len) {
-                try writer.writeAll("");
+                len = 0;
             } else {
-                const start = E.coloff;
-                len -= start;
-                if (len > E.screencols) len = E.screencols;
+                len -= E.coloff;
+            }
 
-                const c = row.render[start .. start + len];
+            if (len > E.screencols) len = E.screencols;
+
+            if (len > 0) {
+                const c = row.render[E.coloff .. E.coloff + len];
+                const hl = row.hl[E.coloff .. E.coloff + len];
+                var current_color: i32 = -1;
+
                 var j: usize = 0;
                 while (j < len) : (j += 1) {
-                    if (std.ascii.isDigit(c[j])) {
-                        try writer.writeAll("\x1b[31m");
+                    if (hl[j] == @intFromEnum(editorHiglight.HL_NORMAL)) {
+                        if (current_color != -1) {
+                            try writer.writeAll("\x1b[39m");
+                            current_color = -1;
+                        }
                         try writer.writeByte(c[j]);
-                        try writer.writeAll("\x1b[39m");
                     } else {
+                        const color = editorSyntaxToColor(hl[j]);
+                        if (color != current_color) {
+                            current_color = color;
+                            try writer.print("\x1b[{d}m", .{color});
+                        }
                         try writer.writeByte(c[j]);
                     }
                 }
             }
+
+            try writer.writeAll("\x1b[39m");
         }
         try writer.writeAll("\x1b[K");
         try writer.writeAll("\r\n");
