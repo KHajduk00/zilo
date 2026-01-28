@@ -306,6 +306,8 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
 
     row.render[row.size] = 0;
     row.rsize = row.size;
+
+    try editorUpdateSyntax(allocator, row);
 }
 
 fn editorFreeRow(allocator: mem.Allocator, row: *Erow) void {
@@ -373,6 +375,23 @@ fn editorRowDelChar(allocator: mem.Allocator, row: *Erow, at: usize) !void {
     row.size -= 1;
     try editorUpdateRow(allocator, row);
     E.dirty += 1;
+}
+
+//*** syntax highlighting ***//
+fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
+    if (row.hl.len > 0) {
+        allocator.free(row.hl);
+    }
+    row.hl = try allocator.alloc(u8, row.rsize);
+
+    @memset(row.hl, @intFromEnum(editorHiglight.HL_NORMAL));
+
+    var i: usize = 0;
+    while (i < row.rsize) : (i += 1) {
+        if (std.ascii.isDigit(row.render[i])) {
+            row.hl[i] = @intFromEnum(editorHiglight.HL_NUMBER);
+        }
+    }
 }
 
 //*** editor operations ***//
