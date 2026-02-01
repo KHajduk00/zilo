@@ -12,6 +12,7 @@ fn CTRL_KEY(comptime k: u8) u8 {
 const zilo_version = "0.0.1";
 const ZILO_TAB_STOP = 8;
 const ZILO_QUIT_TIMES = 3;
+const HL_HIGHLIGHT_NUMBERS: u8 = 1 << 0;
 
 const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT = 0x1003, ARROW_UP = 0x1000, ARROW_DOWN = 0x1001, HOME_KEY = 0x1004, END_KEY = 0x1005, PAGE_UP = 0x1006, PAGE_DOWN = 0x1007, DEL_KEY = 0x1008 };
 
@@ -19,6 +20,12 @@ const editorHiglight = enum(u8) {
     HL_NORMAL = 0,
     HL_NUMBER,
     HL_MATCH,
+};
+
+const EditorSyntax = struct {
+    filetype: []const u8,
+    filematch: []const []const u8,
+    flags: u8,
 };
 
 //*** data ***//
@@ -51,6 +58,8 @@ const EditorConfig = struct {
     statusmsg: [80]u8,
     statusmsg_time: i64,
 
+    syntax: ?*const EditorSyntax,
+
     orig_termios: std.posix.termios,
 };
 
@@ -72,12 +81,25 @@ var E = EditorConfig{
     .statusmsg = undefined,
     .statusmsg_time = 0,
 
+    .syntax = null,
+
     .orig_termios = undefined,
 };
 
 const KeyAction = enum {
     Quit,
     NoOp,
+};
+
+//*** filetypes ***//
+const C_HL_extensions = [_][]const u8{ ".c", ".h", ".cpp" };
+
+const HLDB = [_]EditorSyntax{
+    .{
+        .filetype = "c",
+        .filematch = &C_HL_extensions,
+        .flags = HL_HIGHLIGHT_NUMBERS,
+    },
 };
 
 //*** terminal ***//
@@ -391,19 +413,23 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
     @memset(row.hl, @intFromEnum(editorHiglight.HL_NORMAL));
 
+    if (E.syntax == null) return;
+
     var prev_sep: bool = true;
     var i: usize = 0;
     while (i < row.rsize) {
         const c = row.render[i];
         const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHiglight.HL_NORMAL);
 
-        if ((std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHiglight.HL_NUMBER))) or
-            (c == '.' and prev_hl == @intFromEnum(editorHiglight.HL_NUMBER)))
-        {
-            row.hl[i] = @intFromEnum(editorHiglight.HL_NUMBER);
-            i += 1;
-            prev_sep = false;
-            continue;
+        if (E.syntax.?.flags & HL_HIGHLIGHT_NUMBERS != 0) {
+            if ((std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHiglight.HL_NUMBER))) or
+                (c == '.' and prev_hl == @intFromEnum(editorHiglight.HL_NUMBER)))
+            {
+                row.hl[i] = @intFromEnum(editorHiglight.HL_NUMBER);
+                i += 1;
+                prev_sep = false;
+                continue;
+            }
         }
 
         prev_sep = isSeparator(c);
@@ -670,7 +696,11 @@ fn editorDrawStatusBar(list_writer: anytype) !void {
         E.numrows,
         if (E.dirty > 0) "modified" else "",
     });
-    const rstatus_slice = try std.fmt.bufPrint(&rstatus, "{d}/{d}", .{ E.cy + 1, E.numrows });
+    const rstatus_slice = try std.fmt.bufPrint(&rstatus, "{s} | {d}/{d}", .{
+        if (E.syntax) |syn| syn.filetype else "no ft",
+        E.cy + 1,
+        E.numrows,
+    });
 
     var len = status_slice.len;
     if (len > E.screencols) {
@@ -995,6 +1025,7 @@ fn initEditor() void {
     E.dirty = 0;
     E.statusmsg[0] = 0;
     E.statusmsg_time = 0;
+    E.syntax = null;
 
     getWindowSize(&E.screenrows, &E.screencols) catch {
         // Fallback values if we can't get terminal size for some reason
