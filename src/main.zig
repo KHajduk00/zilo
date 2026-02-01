@@ -397,7 +397,9 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
         const c = row.render[i];
         const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHiglight.HL_NORMAL);
 
-        if (std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHiglight.HL_NUMBER))) {
+        if ((std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHiglight.HL_NUMBER))) or
+            (c == '.' and prev_hl == @intFromEnum(editorHiglight.HL_NUMBER)))
+        {
             row.hl[i] = @intFromEnum(editorHiglight.HL_NUMBER);
             i += 1;
             prev_sep = false;
