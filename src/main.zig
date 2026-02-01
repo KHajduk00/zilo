@@ -379,6 +379,10 @@ fn editorRowDelChar(allocator: mem.Allocator, row: *Erow, at: usize) !void {
 }
 
 //*** syntax highlighting ***//
+fn isSeparator(c: u8) bool {
+    return std.ascii.isWhitespace(c) or c == 0 or std.mem.indexOfScalar(u8, ",.()+-/*=~%<>[];", c) != null;
+}
+
 fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
     if (row.hl.len > 0) {
         allocator.free(row.hl);
@@ -387,11 +391,21 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
     @memset(row.hl, @intFromEnum(editorHiglight.HL_NORMAL));
 
+    var prev_sep: bool = true;
     var i: usize = 0;
-    while (i < row.rsize) : (i += 1) {
-        if (std.ascii.isDigit(row.render[i])) {
+    while (i < row.rsize) {
+        const c = row.render[i];
+        const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHiglight.HL_NORMAL);
+
+        if (std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHiglight.HL_NUMBER))) {
             row.hl[i] = @intFromEnum(editorHiglight.HL_NUMBER);
+            i += 1;
+            prev_sep = false;
+            continue;
         }
+
+        prev_sep = isSeparator(c);
+        i += 1;
     }
 }
 
