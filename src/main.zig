@@ -18,6 +18,7 @@ const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT
 const editorHiglight = enum(u8) {
     HL_NORMAL = 0,
     HL_NUMBER,
+    HL_MATCH,
 };
 
 //*** data ***//
@@ -397,6 +398,7 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 fn editorSyntaxToColor(hl: u8) u8 {
     return switch (@as(editorHiglight, @enumFromInt(hl))) {
         .HL_NUMBER => 31, // Red
+        .HL_MATCH => 34, // Blue
         else => 37, // White (default)
     };
 }
@@ -583,6 +585,8 @@ fn editorFindCallback(query: []const u8, key: u16) void {
             E.cy = @intCast(current);
             E.cx = editorRowRxToCx(row, @intCast(match_index));
             E.rowoff = E.numrows;
+
+            @memset(row.hl[match_index .. match_index + query.len], @intFromEnum(editorHiglight.HL_MATCH));
             break;
         }
     }
