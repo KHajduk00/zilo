@@ -548,11 +548,19 @@ fn editorSave(allocator: mem.Allocator) !void {
 }
 
 //*** find ***//
-fn editorFindCallback(query: []const u8, key: u16) void {
+fn editorFindCallback(allocator: mem.Allocator, query: []const u8, key: u16) void {
     const search_state = struct {
         var last_match: i32 = -1;
         var direction: i8 = 1;
+        var saved_hl_line: usize = 0;
+        var saved_hl: ?[]u8 = null;
     };
+
+    if (search_state.saved_hl) |hl| {
+        @memcpy(E.rows[search_state.saved_hl_line].hl, hl);
+        allocator.free(hl);
+        search_state.saved_hl = null;
+    }
 
     if (key == '\r' or key == '\x1b') {
         search_state.last_match = -1;
@@ -585,6 +593,12 @@ fn editorFindCallback(query: []const u8, key: u16) void {
             E.cy = @intCast(current);
             E.cx = editorRowRxToCx(row, @intCast(match_index));
             E.rowoff = E.numrows;
+
+            search_state.saved_hl_line = @intCast(current);
+            search_state.saved_hl = allocator.alloc(u8, row.rsize) catch null;
+            if (search_state.saved_hl) |hl| {
+                @memcpy(hl, row.hl);
+            }
 
             @memset(row.hl[match_index .. match_index + query.len], @intFromEnum(editorHiglight.HL_MATCH));
             break;
@@ -777,7 +791,7 @@ fn editorSetStatusMessage(comptime fmt: []const u8, args: anytype) void {
 }
 
 //*** input ***//
-fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8, callback: ?*const fn ([]const u8, u16) void) !?[]u8 {
+fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8, callback: ?*const fn (mem.Allocator, []const u8, u16) void) !?[]u8 {
     var bufsize: usize = 128;
     var buf = try allocator.alloc(u8, bufsize);
     var buflen: usize = 0;
@@ -796,13 +810,13 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8, callback:
             }
         } else if (c == '\x1b') {
             editorSetStatusMessage("", .{});
-            if (callback) |cb| cb(buf[0..buflen], c);
+            if (callback) |cb| cb(allocator, buf[0..buflen], c);
             allocator.free(buf);
             return null;
         } else if (c == '\r') {
             if (buflen != 0) {
                 editorSetStatusMessage("", .{});
-                if (callback) |cb| cb(buf[0..buflen], c);
+                if (callback) |cb| cb(allocator, buf[0..buflen], c);
                 return try allocator.realloc(buf, buflen);
             }
         } else if (c < 128 and !std.ascii.isControl(@intCast(c))) {
@@ -815,7 +829,7 @@ fn editorPrompt(allocator: mem.Allocator, comptime prompt: []const u8, callback:
             buf[buflen] = 0;
         }
 
-        if (callback) |cb| cb(buf[0..buflen], c);
+        if (callback) |cb| cb(allocator, buf[0..buflen], c);
     }
 }
 
