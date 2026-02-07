@@ -19,6 +19,7 @@ const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT
 
 const editorHighlight = enum(u8) {
     HL_NORMAL = 0,
+    HL_COMMENT,
     HL_STRING,
     HL_NUMBER,
     HL_MATCH,
@@ -27,6 +28,7 @@ const editorHighlight = enum(u8) {
 const EditorSyntax = struct {
     filetype: []const u8,
     filematch: []const []const u8,
+    singleline_comment_start: ?[]const u8,
     flags: u8,
 };
 
@@ -100,6 +102,7 @@ const HLDB = [_]EditorSyntax{
     .{
         .filetype = "c",
         .filematch = &C_HL_extensions,
+        .singleline_comment_start = "//",
         .flags = HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
     },
 };
@@ -427,6 +430,11 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
         if (E.syntax.?.flags & HL_HIGHLIGHT_STRINGS != 0) {
             if (in_string != 0) {
                 row.hl[i] = @intFromEnum(editorHighlight.HL_STRING);
+                if (c == '\\' and i + 1 < row.rsize) {
+                    row.hl[i + 1] = @intFromEnum(editorHighlight.HL_STRING);
+                    i += 2;
+                    continue;
+                }
                 if (c == in_string) in_string = 0;
                 i += 1;
                 prev_sep = true;
@@ -459,6 +467,7 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
 fn editorSyntaxToColor(hl: u8) u8 {
     return switch (@as(editorHighlight, @enumFromInt(hl))) {
+        .HL_COMMENT => 36, // Cyan
         .HL_STRING => 35, // Magenta
         .HL_NUMBER => 31, // Red
         .HL_MATCH => 34, // Blue
