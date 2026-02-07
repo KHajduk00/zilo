@@ -420,12 +420,22 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
     if (E.syntax == null) return;
 
+    const scs = E.syntax.?.singleline_comment_start;
+    const scs_len = if (scs) |s| s.len else 0;
+
     var prev_sep: bool = true;
     var in_string: u8 = 0;
     var i: usize = 0;
     while (i < row.rsize) {
         const c = row.render[i];
         const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHighlight.HL_NORMAL);
+
+        if (scs_len > 0 and in_string == 0) {
+            if (i + scs_len <= row.rsize and std.mem.eql(u8, row.render[i .. i + scs_len], scs.?)) {
+                @memset(row.hl[i..row.rsize], @intFromEnum(editorHighlight.HL_COMMENT));
+                break;
+            }
+        }
 
         if (E.syntax.?.flags & HL_HIGHLIGHT_STRINGS != 0) {
             if (in_string != 0) {
