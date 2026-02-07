@@ -20,6 +20,8 @@ const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT
 const editorHighlight = enum(u8) {
     HL_NORMAL = 0,
     HL_COMMENT,
+    HL_KEYWORD1,
+    HL_KEYWORD2,
     HL_STRING,
     HL_NUMBER,
     HL_MATCH,
@@ -28,6 +30,7 @@ const editorHighlight = enum(u8) {
 const EditorSyntax = struct {
     filetype: []const u8,
     filematch: []const []const u8,
+    keywords: ?[]const []const u8,
     singleline_comment_start: ?[]const u8,
     flags: u8,
 };
@@ -97,11 +100,20 @@ const KeyAction = enum {
 
 //*** filetypes ***//
 const C_HL_extensions = [_][]const u8{ ".c", ".h", ".cpp" };
+const C_HL_keywords = [_][]const u8{
+    "switch",  "if",   "while", "for",  "break", "continue", "return", "else",    "struct", "union", "typedef",
+    "static",  "enum", "class", "case",
+
+    // C types
+    "int|",  "long|",    "float|", "double|", "char|",  "void|", "unsigned|",
+    "signed|",
+};
 
 const HLDB = [_]EditorSyntax{
     .{
         .filetype = "c",
         .filematch = &C_HL_extensions,
+        .keywords = &C_HL_keywords,
         .singleline_comment_start = "//",
         .flags = HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
     },
@@ -420,6 +432,7 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
     if (E.syntax == null) return;
 
+    const keywords = E.syntax.?.keywords;
     const scs = E.syntax.?.singleline_comment_start;
     const scs_len = if (scs) |s| s.len else 0;
 
@@ -470,6 +483,31 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
             }
         }
 
+        if (prev_sep) {
+            if (keywords) |kws| {
+                var j: usize = 0;
+                while (j < kws.len) : (j += 1) {
+                    const keyword = kws[j];
+                    var klen = keyword.len;
+                    const kw2 = keyword[klen - 1] == '|';
+                    if (kw2) klen -= 1;
+
+                    if (i + klen <= row.rsize and
+                        std.mem.eql(u8, row.render[i .. i + klen], keyword[0..klen]) and
+                        isSeparator(row.render[i + klen]))
+                    {
+                        @memset(row.hl[i .. i + klen], @intFromEnum(if (kw2) editorHighlight.HL_KEYWORD2 else editorHighlight.HL_KEYWORD1));
+                        i += klen;
+                        break;
+                    }
+                }
+                if (j < kws.len) {
+                    prev_sep = false;
+                    continue;
+                }
+            }
+        }
+
         prev_sep = isSeparator(c);
         i += 1;
     }
@@ -478,6 +516,8 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 fn editorSyntaxToColor(hl: u8) u8 {
     return switch (@as(editorHighlight, @enumFromInt(hl))) {
         .HL_COMMENT => 36, // Cyan
+        .HL_KEYWORD1 => 33, // Yellow
+        .HL_KEYWORD2 => 32, // Green
         .HL_STRING => 35, // Magenta
         .HL_NUMBER => 31, // Red
         .HL_MATCH => 34, // Blue
