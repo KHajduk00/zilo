@@ -445,7 +445,7 @@ fn editorSyntaxToColor(hl: u8) u8 {
     };
 }
 
-fn editorSelectSyntaxHighlight() void {
+fn editorSelectSyntaxHighlight(allocator: mem.Allocator) void {
     E.syntax = null;
     if (E.filename == null) return;
 
@@ -467,6 +467,12 @@ fn editorSelectSyntaxHighlight() void {
                 (!is_ext and std.mem.indexOf(u8, filename, pattern) != null))
             {
                 E.syntax = s;
+
+                var filerow: usize = 0;
+                while (filerow < E.numrows) : (filerow += 1) {
+                    editorUpdateSyntax(allocator, &E.rows[filerow]) catch {};
+                }
+
                 return;
             }
         }
@@ -548,7 +554,7 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     }
 
     E.filename = try allocator.dupe(u8, filename);
-    editorSelectSyntaxHighlight();
+    editorSelectSyntaxHighlight(allocator);
 
     const file = try fs.cwd().openFile(filename, .{ .mode = .read_only });
     defer file.close();
@@ -590,7 +596,7 @@ fn editorSave(allocator: mem.Allocator) !void {
             editorSetStatusMessage("Save aborted", .{});
             return;
         }
-        editorSelectSyntaxHighlight();
+        editorSelectSyntaxHighlight(allocator);
     }
 
     // Convert rows to a single buffer
