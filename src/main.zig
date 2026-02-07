@@ -13,11 +13,13 @@ const zilo_version = "0.0.1";
 const ZILO_TAB_STOP = 8;
 const ZILO_QUIT_TIMES = 3;
 const HL_HIGHLIGHT_NUMBERS: u8 = 1 << 0;
+const HL_HIGHLIGHT_STRINGS: u8 = 1 << 1;
 
 const editorKey = enum(u16) { BACKSPACE = 0x7f, ARROW_LEFT = 0x1002, ARROW_RIGHT = 0x1003, ARROW_UP = 0x1000, ARROW_DOWN = 0x1001, HOME_KEY = 0x1004, END_KEY = 0x1005, PAGE_UP = 0x1006, PAGE_DOWN = 0x1007, DEL_KEY = 0x1008 };
 
-const editorHiglight = enum(u8) {
+const editorHighlight = enum(u8) {
     HL_NORMAL = 0,
+    HL_STRING,
     HL_NUMBER,
     HL_MATCH,
 };
@@ -98,7 +100,7 @@ const HLDB = [_]EditorSyntax{
     .{
         .filetype = "c",
         .filematch = &C_HL_extensions,
-        .flags = HL_HIGHLIGHT_NUMBERS,
+        .flags = HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
     },
 };
 
@@ -411,21 +413,39 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
     }
     row.hl = try allocator.alloc(u8, row.rsize);
 
-    @memset(row.hl, @intFromEnum(editorHiglight.HL_NORMAL));
+    @memset(row.hl, @intFromEnum(editorHighlight.HL_NORMAL));
 
     if (E.syntax == null) return;
 
     var prev_sep: bool = true;
+    var in_string: u8 = 0;
     var i: usize = 0;
     while (i < row.rsize) {
         const c = row.render[i];
-        const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHiglight.HL_NORMAL);
+        const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHighlight.HL_NORMAL);
+
+        if (E.syntax.?.flags & HL_HIGHLIGHT_STRINGS != 0) {
+            if (in_string != 0) {
+                row.hl[i] = @intFromEnum(editorHighlight.HL_STRING);
+                if (c == in_string) in_string = 0;
+                i += 1;
+                prev_sep = true;
+                continue;
+            } else {
+                if (c == '"' or c == '\'') {
+                    in_string = c;
+                    row.hl[i] = @intFromEnum(editorHighlight.HL_STRING);
+                    i += 1;
+                    continue;
+                }
+            }
+        }
 
         if (E.syntax.?.flags & HL_HIGHLIGHT_NUMBERS != 0) {
-            if ((std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHiglight.HL_NUMBER))) or
-                (c == '.' and prev_hl == @intFromEnum(editorHiglight.HL_NUMBER)))
+            if ((std.ascii.isDigit(c) and (prev_sep or prev_hl == @intFromEnum(editorHighlight.HL_NUMBER))) or
+                (c == '.' and prev_hl == @intFromEnum(editorHighlight.HL_NUMBER)))
             {
-                row.hl[i] = @intFromEnum(editorHiglight.HL_NUMBER);
+                row.hl[i] = @intFromEnum(editorHighlight.HL_NUMBER);
                 i += 1;
                 prev_sep = false;
                 continue;
@@ -438,7 +458,8 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 }
 
 fn editorSyntaxToColor(hl: u8) u8 {
-    return switch (@as(editorHiglight, @enumFromInt(hl))) {
+    return switch (@as(editorHighlight, @enumFromInt(hl))) {
+        .HL_STRING => 35, // Magenta
         .HL_NUMBER => 31, // Red
         .HL_MATCH => 34, // Blue
         else => 37, // White (default)
@@ -678,7 +699,7 @@ fn editorFindCallback(allocator: mem.Allocator, query: []const u8, key: u16) voi
                 @memcpy(hl, row.hl);
             }
 
-            @memset(row.hl[match_index .. match_index + query.len], @intFromEnum(editorHiglight.HL_MATCH));
+            @memset(row.hl[match_index .. match_index + query.len], @intFromEnum(editorHighlight.HL_MATCH));
             break;
         }
     }
@@ -837,7 +858,7 @@ fn editorDrawRows(writer: anytype) !void {
 
                 var j: usize = 0;
                 while (j < len) : (j += 1) {
-                    if (hl[j] == @intFromEnum(editorHiglight.HL_NORMAL)) {
+                    if (hl[j] == @intFromEnum(editorHighlight.HL_NORMAL)) {
                         if (current_color != -1) {
                             try writer.writeAll("\x1b[39m");
                             current_color = -1;
