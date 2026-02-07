@@ -445,6 +445,34 @@ fn editorSyntaxToColor(hl: u8) u8 {
     };
 }
 
+fn editorSelectSyntaxHighlight() void {
+    E.syntax = null;
+    if (E.filename == null) return;
+
+    const filename = E.filename.?;
+    const ext = blk: {
+        var i = filename.len;
+        while (i > 0) : (i -= 1) {
+            if (filename[i - 1] == '.') {
+                break :blk filename[i - 1 ..];
+            }
+        }
+        break :blk null;
+    };
+
+    for (&HLDB) |*s| {
+        for (s.filematch) |pattern| {
+            const is_ext = pattern[0] == '.';
+            if ((is_ext and ext != null and std.mem.eql(u8, ext.?, pattern)) or
+                (!is_ext and std.mem.indexOf(u8, filename, pattern) != null))
+            {
+                E.syntax = s;
+                return;
+            }
+        }
+    }
+}
+
 //*** editor operations ***//
 fn editorInsertChar(allocator: mem.Allocator, c: u8) !void {
     if (E.cy == E.numrows) {
@@ -520,6 +548,7 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     }
 
     E.filename = try allocator.dupe(u8, filename);
+    editorSelectSyntaxHighlight();
 
     const file = try fs.cwd().openFile(filename, .{ .mode = .read_only });
     defer file.close();
@@ -561,6 +590,7 @@ fn editorSave(allocator: mem.Allocator) !void {
             editorSetStatusMessage("Save aborted", .{});
             return;
         }
+        editorSelectSyntaxHighlight();
     }
 
     // Convert rows to a single buffer
