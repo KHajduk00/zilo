@@ -43,11 +43,13 @@ var fnPressed: bool = false; // Global FN flag
 var quit_times: u8 = ZILO_QUIT_TIMES; // Global quit times counter
 
 const Erow = struct {
+    idx: usize, // Row index in the file
     size: usize, // Raw string size
     chars: []u8, // Raw string
     rsize: usize, // Rendered string size
     render: []u8, // Rendered string (with expanded tabs)
     hl: []u8, // Syntax highlight types for each character
+    hl_open_comment: bool, // Whether the row is part of an open multiline comment
 };
 
 const EditorConfig = struct {
@@ -299,14 +301,20 @@ fn editorInsertRow(allocator: mem.Allocator, at: usize, s: []const u8) !void {
 
     if (at < E.numrows) {
         @memmove(E.rows[at + 1 .. E.numrows + 1], E.rows[at..E.numrows]);
+        var j: usize = at + 1;
+        while (j <= E.numrows) : (j += 1) {
+            E.rows[j].idx += 1;
+        }
     }
 
     E.rows[at] = .{
+        .idx = at,
         .size = s.len,
         .chars = try allocator.alloc(u8, s.len + 1),
         .rsize = 0,
-        .render = &[_]u8{}, // We initialize as an empty slice (like Null in C)
+        .render = &[_]u8{},
         .hl = &[_]u8{},
+        .hl_open_comment = false,
     };
 
     @memcpy(E.rows[at].chars[0..s.len], s);
