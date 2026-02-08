@@ -917,7 +917,15 @@ fn editorDrawRows(writer: anytype) !void {
 
                 var j: usize = 0;
                 while (j < len) : (j += 1) {
-                    if (hl[j] == @intFromEnum(editorHighlight.HL_NORMAL)) {
+                    if (std.ascii.isControl(c[j])) {
+                        const sym: u8 = if (c[j] <= 26) '@' + c[j] else '?';
+                        try writer.writeAll("\x1b[7m");
+                        try writer.writeByte(sym);
+                        try writer.writeAll("\x1b[m");
+                        if (current_color != -1) {
+                            try writer.print("\x1b[{d}m", .{current_color});
+                        }
+                    } else if (hl[j] == @intFromEnum(editorHighlight.HL_NORMAL)) {
                         if (current_color != -1) {
                             try writer.writeAll("\x1b[39m");
                             current_color = -1;
