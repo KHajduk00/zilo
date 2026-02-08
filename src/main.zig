@@ -688,7 +688,12 @@ fn editorOpen(allocator: mem.Allocator, filename: []const u8) !void {
     E.filename = try allocator.dupe(u8, filename);
     editorSelectSyntaxHighlight(allocator);
 
-    const file = try fs.cwd().openFile(filename, .{ .mode = .read_only });
+    const file = fs.cwd().openFile(filename, .{ .mode = .read_only }) catch |err| {
+        if (err == error.FileNotFound) {
+            return;
+        }
+        return err;
+    };
     defer file.close();
 
     const file_size = try file.getEndPos();
