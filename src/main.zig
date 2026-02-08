@@ -439,19 +439,47 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
     const keywords = E.syntax.?.keywords;
     const scs = E.syntax.?.singleline_comment_start;
+    const mcs = E.syntax.?.multiline_comment_start;
+    const mce = E.syntax.?.multiline_comment_end;
+
     const scs_len = if (scs) |s| s.len else 0;
+    const mcs_len = if (mcs) |s| s.len else 0;
+    const mce_len = if (mce) |s| s.len else 0;
 
     var prev_sep: bool = true;
     var in_string: u8 = 0;
+    var in_comment: bool = false;
+
     var i: usize = 0;
     while (i < row.rsize) {
         const c = row.render[i];
         const prev_hl: u8 = if (i > 0) row.hl[i - 1] else @intFromEnum(editorHighlight.HL_NORMAL);
 
-        if (scs_len > 0 and in_string == 0) {
+        if (scs_len > 0 and in_string == 0 and !in_comment) {
             if (i + scs_len <= row.rsize and std.mem.eql(u8, row.render[i .. i + scs_len], scs.?)) {
                 @memset(row.hl[i..row.rsize], @intFromEnum(editorHighlight.HL_COMMENT));
                 break;
+            }
+        }
+
+        if (mcs_len > 0 and mce_len > 0 and in_string == 0) {
+            if (in_comment) {
+                row.hl[i] = @intFromEnum(editorHighlight.HL_MLCOMMENT);
+                if (i + mce_len <= row.rsize and std.mem.eql(u8, row.render[i .. i + mce_len], mce.?)) {
+                    @memset(row.hl[i .. i + mce_len], @intFromEnum(editorHighlight.HL_MLCOMMENT));
+                    i += mce_len;
+                    in_comment = false;
+                    prev_sep = true;
+                    continue;
+                } else {
+                    i += 1;
+                    continue;
+                }
+            } else if (i + mcs_len <= row.rsize and std.mem.eql(u8, row.render[i .. i + mcs_len], mcs.?)) {
+                @memset(row.hl[i .. i + mcs_len], @intFromEnum(editorHighlight.HL_MLCOMMENT));
+                i += mcs_len;
+                in_comment = true;
+                continue;
             }
         }
 
