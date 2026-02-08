@@ -378,6 +378,11 @@ fn editorDelRow(allocator: mem.Allocator, at: usize) void {
         @memmove(E.rows[at .. E.numrows - 1], E.rows[at + 1 .. E.numrows]);
     }
 
+    var j: usize = at;
+    while (j < E.numrows - 1) : (j += 1) {
+        E.rows[j].idx -= 1;
+    }
+
     E.numrows -= 1;
     E.dirty += 1;
 }
@@ -456,7 +461,7 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
     var prev_sep: bool = true;
     var in_string: u8 = 0;
-    var in_comment: bool = false;
+    var in_comment: bool = (row.idx > 0 and E.rows[row.idx - 1].hl_open_comment);
 
     var i: usize = 0;
     while (i < row.rsize) {
@@ -551,6 +556,12 @@ fn editorUpdateSyntax(allocator: mem.Allocator, row: *Erow) !void {
 
         prev_sep = isSeparator(c);
         i += 1;
+    }
+
+    const changed = (row.hl_open_comment != in_comment);
+    row.hl_open_comment = in_comment;
+    if (changed and row.idx + 1 < E.numrows) {
+        editorUpdateSyntax(allocator, &E.rows[row.idx + 1]) catch {};
     }
 }
 
