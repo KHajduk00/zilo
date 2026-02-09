@@ -9,9 +9,9 @@ fn CTRL_KEY(comptime k: u8) u8 {
     return k & 0x1f;
 }
 
-const zilo_version = "0.0.1";
-const ZILO_TAB_STOP = 8;
-const ZILO_QUIT_TIMES = 3;
+const kz_version = "0.0.1";
+const KZ_TAB_STOP = 8;
+const KZ_QUIT_TIMES = 3;
 const HL_HIGHLIGHT_NUMBERS: u8 = 1 << 0;
 const HL_HIGHLIGHT_STRINGS: u8 = 1 << 1;
 
@@ -40,7 +40,7 @@ const EditorSyntax = struct {
 
 //*** data ***//
 var fnPressed: bool = false; // Global FN flag
-var quit_times: u8 = ZILO_QUIT_TIMES; // Global quit times counter
+var quit_times: u8 = KZ_QUIT_TIMES; // Global quit times counter
 
 const Erow = struct {
     idx: usize, // Row index in the file
@@ -272,7 +272,7 @@ fn editorRowCxToRx(row: *const Erow, cx: u16) u16 {
     var j: u16 = 0;
     while (j < cx) : (j += 1) {
         if (row.chars[j] == '\t') {
-            rx += (ZILO_TAB_STOP - 1) - (rx % ZILO_TAB_STOP) + 1;
+            rx += (KZ_TAB_STOP - 1) - (rx % KZ_TAB_STOP) + 1;
         } else {
             rx += 1;
         }
@@ -285,7 +285,7 @@ fn editorRowRxToCx(row: *const Erow, rx: u16) u16 {
     var cx: u16 = 0;
     while (cx < row.size) : (cx += 1) {
         if (row.chars[cx] == '\t') {
-            cur_rx += (ZILO_TAB_STOP - 1) - (cur_rx % ZILO_TAB_STOP) + 1;
+            cur_rx += (KZ_TAB_STOP - 1) - (cur_rx % KZ_TAB_STOP) + 1;
         } else {
             cur_rx += 1;
         }
@@ -332,7 +332,7 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
         if (c == '\t') tabs += 1;
     }
 
-    const extra_space_per_tab = ZILO_TAB_STOP - 1;
+    const extra_space_per_tab = KZ_TAB_STOP - 1;
     const new_size = row.size + (tabs * extra_space_per_tab) + 1;
 
     if (row.render.len > 0) {
@@ -347,7 +347,7 @@ fn editorUpdateRow(allocator: mem.Allocator, row: *Erow) !void {
             row.render[idx] = ' ';
             idx += 1;
 
-            while (idx % ZILO_TAB_STOP != 0) : (idx += 1) {
+            while (idx % KZ_TAB_STOP != 0) : (idx += 1) {
                 row.render[idx] = ' ';
                 idx += 1;
             }
@@ -941,7 +941,7 @@ fn editorDrawRows(writer: anytype) !void {
         if (filerow >= E.numrows) {
             if (E.numrows == 0 and y == E.screenrows / 3) {
                 var welcome: [80]u8 = undefined;
-                const welcome_msg = try std.fmt.bufPrint(&welcome, "Zilo editor -- version {s}", .{zilo_version});
+                const welcome_msg = try std.fmt.bufPrint(&welcome, "kz editor -- version {s}", .{kz_version});
 
                 const display_len = @min(welcome_msg.len, E.screencols);
                 const padding = (E.screencols - display_len) / 2;
@@ -1187,7 +1187,7 @@ fn editorProcessKeypress(allocator: mem.Allocator) !KeyAction {
             } else {
                 try editorInsertChar(allocator, @intCast(c));
             }
-            quit_times = ZILO_QUIT_TIMES;
+            quit_times = KZ_QUIT_TIMES;
             return .NoOp;
         },
     };

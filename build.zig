@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const exe = b.addExecutable(.{
-        .name = "zilo",
+        .name = "kz",
         .root_module = zilo_module,
     });
 
